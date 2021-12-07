@@ -11,6 +11,18 @@
         <content type="html"><![CDATA[<h2 id="我是测试的文章"><a href="#我是测试的文章" class="headerlink" title="我是测试的文章"></a>我是测试的文章</h2>]]></content>
       
       
+      <categories>
+          
+          <category> life </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> test </tag>
+            
+        </tags>
       
     </entry>
     
