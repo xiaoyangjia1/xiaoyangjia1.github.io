@@ -28,6 +28,7 @@
 <h4 id="setup调用时间"><a href="#setup调用时间" class="headerlink" title="setup调用时间"></a>setup调用时间</h4><ul>
 <li><code>setup</code> 的调用发生在 <code>data</code> property、<code>computed</code> property 或 <code>methods</code> 被解析之前，所以它们无法在 <code>setup</code> 中被获取。</li>
 <li>执行setup时，组件实例尚未被创建，所以this在setup中无效，因为它不会找到组件实例。</li>
+<li>setup位于生命周期图顶部</li>
 </ul>
 <h4 id="参数"><a href="#参数" class="headerlink" title="参数"></a>参数</h4><ul>
 <li><code>setup</code> 选项是一个接收 <code>props</code> 和 <code>context</code> 的函数，<code>setup</code> 返回的所有内容都暴露给组件的其余部分 (计算属性、方法、生命周期钩子等等) 以及组件的模板。</li>
