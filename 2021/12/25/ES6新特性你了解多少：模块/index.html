@@ -1,0 +1,94 @@
+<!DOCTYPE html><html class="appearance-auto" lang="en"><head><meta charset="UTF-8"><title>ES6新特性你了解多少：模块</title><meta name="description" content="Tate Yang的个人博客网站"><meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, initial-scale=1"><!-- Google Analytics --><!-- End Google Analytics -->
+<!-- Baidu Analytics --><!-- End Baidu Analytics --><link rel="icon" href="/yqx.ico"><link rel="stylesheet" href="/style/common/bulma.css"><link rel="stylesheet" href="/style/base.css"><link rel="stylesheet" href="/style/common/helper.css"><script src="/js/common.js"></script><link rel="stylesheet" href="/style/post.css"><link rel="stylesheet" href="/style/themes/highlight-theme-light.css"><script src="/js/highlight.pack.js"></script><meta name="description" content="javascript用共享一切的方法加载代码，这是这个语言中最容易出错且容易令人感到困惑的地方。在ES6之前，应用程序的每一个Javascript中定义的一切都共享一个全局的作用域，容易引发命名冲突和安全问题。
+为了解决作用域问题，使JS应用程序变得有序，便引进了模块。
+
+在ES6模块规范出现前，浏览器原生并不支持模块的行为，ECMAScript同样不支持模块，因此希望使用模块模式的库或代码库必须基于JavaScript的语法和词法特性’伪造’出类似模块的行为
+
+模块思想把逻辑分块，各自封装，相互独立，每个块自行决定对外暴露的内容，同时自行决定引入执行哪些外部代码
+模块标识符模块系统本质上是键值实体，其中每个模块都有个可用于引用它的标识符。
+原生浏览器模块标识符必须提供实际JS文件的路径。除了文件路径，No.."><meta name="generator" content="Hexo 5.4.0"></head><body class="is-flex is-flex-direction-column"><header class="header-widget is-flex-shrink-0 is-hidden-mobile"><div class="container is-fullhd is-flex is-justify-content-space-between is-align-items-center is-full-height"><section class="is-hidden-mobile is-flex-shrink-0"><h2><a href="/">Tate Yang's blog</a></h2></section><h3 class="is-hidden-mobile is-family-serif is-full-height is-flex is-align-items-center is-flex-shrink-0"><div class="is-full-height" id="postTopic"><p class="is-full-height is-flex-shrink-0 is-flex is-align-items-center is-justify-content-center">ES6新特性你了解多少：模块</p><p class="is-full-height is-flex-shrink-0 is-flex is-align-items-center is-justify-content-center">Click back to the top</p></div></h3><aside class="is-flex-shrink-0"><h3 class="is-inline-block"><a href="/">Home</a></h3><h3 class="is-inline-block"><a href="/about">About</a></h3><h3 class="is-inline-block"><a href="/archives">Archives</a></h3></aside></div></header><header class="is-flex header-widget is-flex-shrink-0 is-align-items-center is-justify-content-center is-hidden-tablet"><h3 class="is-inline-block"><a href="/">Home</a></h3><h3 class="is-inline-block"><a href="/about">About</a></h3><h3 class="is-inline-block"><a href="/archives">Archives</a></h3></header><main><main class="container is-max-widescreen content section post-page pt-4 px-4"><div class="columns is-flex-desktop is-justify-content-center is-flex-direction-row-reverse"><div class="column is-3 is-hidden-mobile"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A8%A1%E5%9D%97%E6%80%9D%E6%83%B3"><span class="toc-text">模块思想</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A8%A1%E5%9D%97%E6%A0%87%E8%AF%86%E7%AC%A6"><span class="toc-text">模块标识符</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A8%A1%E5%9D%97%E4%BE%9D%E8%B5%96"><span class="toc-text">模块依赖</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A8%A1%E5%9D%97%E5%8A%A0%E8%BD%BD"><span class="toc-text">模块加载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E4%BE%9D%E8%B5%96"><span class="toc-text">动态依赖</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9D%99%E6%80%81%E5%88%86%E6%9E%90"><span class="toc-text">静态分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BE%AA%E7%8E%AF%E4%BE%9D%E8%B5%96"><span class="toc-text">循环依赖</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ES6%E6%A8%A1%E5%9D%97"><span class="toc-text">ES6模块</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AF%BC%E5%87%BA%E5%92%8C%E5%AF%BC%E5%85%A5"><span class="toc-text">导出和导入</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A0%E8%BD%BD%E6%A8%A1%E5%9D%97"><span class="toc-text">加载模块</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%A8Web%E6%B5%8F%E8%A7%88%E5%99%A8%E4%B8%AD%E4%BD%BF%E7%94%A8%E6%A8%A1%E5%9D%97"><span class="toc-text">在Web浏览器中使用模块</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%9C%A8script%E5%85%83%E7%B4%A0%E4%B8%AD%E4%BD%BF%E7%94%A8%E6%A8%A1%E5%9D%97"><span class="toc-text">在script元素中使用模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A8%A1%E5%9D%97%E5%8A%A0%E8%BD%BD%E9%A1%BA%E5%BA%8F"><span class="toc-text">模块加载顺序</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B0%86%E6%A8%A1%E5%9D%97%E4%BD%9C%E4%B8%BAworker%E5%8A%A0%E8%BD%BD"><span class="toc-text">将模块作为worker加载</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%8ECommonJS%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="toc-text">与CommonJS的区别</span></a></div><div class="column is-9"><header class="my-4"><a href="/tags/es6"><i class="tag post-item-tag">es6</i></a></header><h1 class="mt-0 mb-1 is-family-serif" id="postTitle">ES6新特性你了解多少：模块</h1><time class="has-text-grey" datetime="2021-12-25T14:27:17.000Z">2021-12-25</time><article class="mt-2 post-content"><p>javascript用共享一切的方法加载代码，这是这个语言中最容易出错且容易令人感到困惑的地方。在ES6之前，应用程序的每一个Javascript中定义的一切都共享一个全局的作用域，容易引发命名冲突和安全问题。</p>
+<p>为了解决作用域问题，使JS应用程序变得有序，便引进了模块。</p>
+<blockquote>
+<p>在ES6模块规范出现前，浏览器原生并不支持模块的行为，ECMAScript同样不支持模块，因此希望使用模块模式的库或代码库必须基于JavaScript的语法和词法特性’伪造’出类似模块的行为</p>
+</blockquote>
+<h3 id="模块思想"><a href="#模块思想" class="headerlink" title="模块思想"></a>模块思想</h3><p>把逻辑分块，各自封装，相互独立，每个块自行决定对外暴露的内容，同时自行决定引入执行哪些外部代码</p>
+<h3 id="模块标识符"><a href="#模块标识符" class="headerlink" title="模块标识符"></a>模块标识符</h3><p>模块系统本质上是键值实体，其中每个模块都有个可用于引用它的标识符。</p>
+<p>原生浏览器模块标识符必须提供实际JS文件的路径。除了文件路径，Node.js还会搜索node_modules目录，用标识符去匹配包含index.js的目录</p>
+<h3 id="模块依赖"><a href="#模块依赖" class="headerlink" title="模块依赖"></a>模块依赖</h3><p>模块系统的核心是管理依赖。指定依赖的模块与周围的环境会达成一种契约。本地模块向模块系统声明一组外部模块，这些外部模块对于当前模块正常运行是必需的。模块系统检视这些依赖，确保这些外部模块能够被加载并在本地模块运行时初始化所有依赖。</p>
+<h3 id="模块加载"><a href="#模块加载" class="headerlink" title="模块加载"></a>模块加载</h3><p>加载模块的概念派生自依赖契约，当一个外部模块被指定为依赖时，本地模块期望在执行它时，依赖已准备好并已初始化。</p>
+<p>浏览器会递归地评估并加载所有依赖，知道所有依赖模块都加载完成。</p>
+<p>只有整个依赖图都加载完成，才可以执行入口文件</p>
+<p>模块加载是阻塞的，意味着前置操作必须完成才能执行后续操作。每个模块在自己的代码到达浏览器之后完成加载，此时其依赖已经加载并初始化。</p>
+<h3 id="动态依赖"><a href="#动态依赖" class="headerlink" title="动态依赖"></a>动态依赖</h3><p>有的模块系统要求开发者在模块开始列出所有依赖，有些允许开发者在程序结构中动态添加依赖。</p>
+<p>动态添加的依赖必须在模块执行前加载完毕。虽然支持更复杂的依赖关系，但增加了对模块进行静态分析的难度</p>
+<h3 id="静态分析"><a href="#静态分析" class="headerlink" title="静态分析"></a>静态分析</h3><p>模块中包含的要发送到浏览器的JavaScript代码经常会被静态分析，分析工具会检查代码结构并在不实际执行代码 的情况下推断其行为。</p>
+<h3 id="循环依赖"><a href="#循环依赖" class="headerlink" title="循环依赖"></a>循环依赖</h3><p>所有的模块系统都支持循环依赖，在包含循环依赖的程序中，模块的加载顺序可能会出人意料，都是执行深度优先的依赖加载</p>
+<h2 id="ES6模块"><a href="#ES6模块" class="headerlink" title="ES6模块"></a>ES6模块</h2><p>ES6最大的一个改进是引入了模块规范</p>
+<p>模块是自动运行在严格模式下并且没有办法退出运行的JS代码。</p>
+<p>在模块顶部创建的变量不会自动添加到全局共享作用域，仅在该模块的顶级作用域中存在。</p>
+<p>在模块顶部this值为undefined</p>
+<p>模块不支持HTML风格的代码注释</p>
+<p>ES6模块是异步加载执行的</p>
+<p>脚本，也就是任何不是模块的JS代码，缺少这些特性</p>
+<h2 id="导出和导入"><a href="#导出和导入" class="headerlink" title="导出和导入"></a>导出和导入</h2><p>使用export关键字暴露相关代码给其他模块</p>
+<pre class="language-js" data-language="js"><code class="language-js"><span class="token keyword">export</span> <span class="token keyword">let</span> name<span class="token operator">=</span><span class="token string">'yqx'</span>
+<span class="token keyword">function</span> <span class="token function">sum</span><span class="token punctuation">(</span><span class="token parameter">num1<span class="token punctuation">,</span>num2</span><span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+    <span class="token keyword">return</span> num1 <span class="token operator">+</span> num2
+<span class="token punctuation">&#125;</span>
+<span class="token keyword">export</span> <span class="token punctuation">&#123;</span> sum <span class="token keyword">as</span> add <span class="token punctuation">&#125;</span> <span class="token comment">// 可重命名</span>
+<span class="token keyword">export</span> <span class="token keyword">default</span> sum<span class="token punctuation">;</span> <span class="token comment">// 可导出默认值</span>
+
+<span class="token comment">// 导入</span>
+<span class="token keyword">import</span> sum<span class="token punctuation">,</span><span class="token punctuation">&#123;</span> name <span class="token punctuation">,</span> add <span class="token punctuation">&#125;</span> <span class="token keyword">from</span> <span class="token string">"导出的文件相对路径"</span> <span class="token comment">// 默认值必须排在非默认值前面 </span></code></pre>
+
+<p>可以为每个模块设置一个默认的导出值</p>
+<p>import语句为变量、函数和类创建的是只读绑定，因此不能给导入的绑定重新赋值</p>
+<p>export和import必须在其他语句和函数之外使用，因此不能动态的导入导出</p>
+<p>导入导出都可重命名</p>
+<pre class="language-js" data-language="js"><code class="language-js"><span class="token keyword">export</span> <span class="token punctuation">&#123;</span>sum<span class="token punctuation">&#125;</span> <span class="token keyword">from</span> <span class="token string">'相对路径'</span> <span class="token comment">// 重新导出一个绑定</span></code></pre>
+
+<p>模块可以不导出任何东西，通过无绑定导入执行模块中的代码。一般用于创建Polyfill和Shim</p>
+<h2 id="加载模块"><a href="#加载模块" class="headerlink" title="加载模块"></a>加载模块</h2><p>ES6只是定义了模块的语法，但它并没有定义如何加载模块，这正是规范复杂性的一个体现，应由不同的实现环境来决定</p>
+<h3 id="在Web浏览器中使用模块"><a href="#在Web浏览器中使用模块" class="headerlink" title="在Web浏览器中使用模块"></a>在Web浏览器中使用模块</h3><p>Web浏览器有多种方式将JS包含在Web应用程序中</p>
+<ul>
+<li>在script元素中通过src属性指定加载代码的地址</li>
+<li>将JS代码内嵌到没有src属性的srcript元素中</li>
+<li>通过Web Worker 或Service Worker的方法加载并执行JS文件</li>
+</ul>
+<h4 id="在script元素中使用模块"><a href="#在script元素中使用模块" class="headerlink" title="在script元素中使用模块"></a>在script元素中使用模块</h4><p>当type属性的值为module时支持加载模块，当无法识别type的值时，浏览器会忽略script元素</p>
+<h4 id="模块加载顺序"><a href="#模块加载顺序" class="headerlink" title="模块加载顺序"></a>模块加载顺序</h4><p>当type=”module”时自动应用defer属性。一旦HTML解析器遇到模块类型便开始下载模块文件，知道文档被完全解析模块才会执行。并且模块按照他们在文档中出现的顺序执行</p>
+<p>async属性也可以被应用在模块上，需要确保当模块执行前，其所需的所有资源都下载完成，但不能保证的时模块的执行时机。</p>
+<h4 id="将模块作为worker加载"><a href="#将模块作为worker加载" class="headerlink" title="将模块作为worker加载"></a>将模块作为worker加载</h4><p>通过使用Web Workers，Web应用程序可以在独立于主线程的后台线程中，运行一个脚本操作。这样做的好处是可以在独立线程中执行费时的处理任务，从而允许主线程（通常是UI线程）不会因此被阻塞/放慢。</p>
+<pre class="language-js" data-language="js"><code class="language-js"><span class="token keyword">let</span> worker1<span class="token operator">=</span><span class="token keyword">new</span> <span class="token class-name">Worker</span><span class="token punctuation">(</span><span class="token string">"script.js"</span><span class="token punctuation">)</span>
+<span class="token keyword">let</span> worker2<span class="token operator">=</span><span class="token keyword">new</span> <span class="token class-name">Worker</span><span class="token punctuation">(</span><span class="token string">"module.js"</span><span class="token punctuation">,</span><span class="token punctuation">&#123;</span>type<span class="token operator">:</span><span class="token string">"module"</span><span class="token punctuation">&#125;</span><span class="token punctuation">)</span></code></pre>
+
+<h2 id="与CommonJS的区别"><a href="#与CommonJS的区别" class="headerlink" title="与CommonJS的区别"></a>与CommonJS的区别</h2><table>
+<thead>
+<tr>
+<th></th>
+<th>CommonJS</th>
+<th>es模块</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>指定依赖</td>
+<td>require</td>
+<td>import</td>
+</tr>
+<tr>
+<td>导出</td>
+<td>module.exports</td>
+<td>export</td>
+</tr>
+<tr>
+<td>动态加载</td>
+<td>可以</td>
+<td>不可以</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+</article><section class="jump-container is-flex is-justify-content-space-between my-6"><!-- em is empty placeholder--><a class="button is-default" href="/2021/12/26/%E6%B5%8F%E8%A7%88%E5%99%A8%E9%82%A3%E4%BA%9B%E4%BA%8B%EF%BC%9A%E8%81%8A%E8%81%8A%E6%B5%8F%E8%A7%88%E5%99%A8%E5%86%85%E6%A0%B8%E7%9A%84%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%9C%BA%E5%88%B6/" title="浏览器那些事：聊聊浏览器内核的多线程机制"><i class="iconfont icon-prev mr-2 has-text-grey"></i><span class="has-text-weight-semibold">Previous: 浏览器那些事：聊聊浏览器内核的多线程机制</span></a><a class="button is-default" href="/2021/12/25/ES6%E6%96%B0%E7%89%B9%E6%80%A7%E4%BD%A0%E4%BA%86%E8%A7%A3%E5%A4%9A%E5%B0%91%EF%BC%9ASet%E3%80%81Map%E3%80%81WeakSet%E3%80%81WeakMap/" title="ES6新特性你了解多少：Set、Map、WeakSet、WeakMap"><span class="has-text-weight-semibold">Next: ES6新特性你了解多少：Set、Map、WeakSet、WeakMap</span><i class="iconfont icon-next ml-2 has-text-grey"></i></a></section><article class="mt-6 comment-container"><script async repo="xiaoyangjia1/Claudia-theme-blog" src="https://utteranc.es/client.js" issue-term="pathname" theme="preferred-color-scheme"></script></article></div></div></main></main><footer class="is-flex is-flex-direction-column is-align-items-center is-flex-shrink-0 is-family-serif"><section class="sns-container"><a title="twitter" target="_blank" rel="noopener nofollow" href="//twitter.com//"><i class="iconfont icon-twitter"></i></a><!-- Github--><a title="github" target="_blank" rel="noopener nofollow" href="//github.com/xiaoyangjia1"><i class="iconfont icon-github"></i></a><!-- Ins--><a title="instagram" target="_blank" rel="noopener nofollow" href="//www.instagram.com//"><i class="iconfont icon-ins"></i></a><!-- RSS--><!-- 知乎--><!-- 领英--><!-- 脸书--><a title="facebook" target="_blank" rel="noopener nofollow" href="//www.facebook.com//"><i class="iconfont icon-tian7_facebook"></i></a></section><p><span>Copyright ©</span><span> Tate Yang 2021</span></p><div class="is-flex is-justify-content-center is-flex-wrap-wrap"><p>Powered by Hexo &verbar;&nbsp;</p><p class="is-flex is-justify-content-center"><a title="Hexo theme author" target="_blank" rel="noopener" href="//github.com/haojen">Theme by Haojen&nbsp;</a></p><div style="margin-top: 2px"><a class="github-button" title="github-button" target="_blank" rel="noopener" href="https://github.com/haojen/hexo-theme-Claudia" data-color-scheme="no-preference: light; light: light; dark: dark;" data-show-count="true"></a></div></div><div><span></span></div></footer><script async defer src="https://buttons.github.io/buttons.js"></script><script src="/js/post.js"></script></body></html>
