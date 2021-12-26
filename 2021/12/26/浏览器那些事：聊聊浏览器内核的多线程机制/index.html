@@ -1,0 +1,97 @@
+<!DOCTYPE html><html class="appearance-auto" lang="en"><head><meta charset="UTF-8"><title>浏览器那些事：聊聊浏览器内核的多线程机制</title><meta name="description" content="Tate Yang的个人博客网站"><meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, initial-scale=1"><!-- Google Analytics --><!-- End Google Analytics -->
+<!-- Baidu Analytics --><!-- End Baidu Analytics --><link rel="icon" href="/yqx.ico"><link rel="stylesheet" href="/style/common/bulma.css"><link rel="stylesheet" href="/style/base.css"><link rel="stylesheet" href="/style/common/helper.css"><script src="/js/common.js"></script><link rel="stylesheet" href="/style/post.css"><link rel="stylesheet" href="/style/themes/highlight-theme-light.css"><script src="/js/highlight.pack.js"></script><meta name="description" content="进程和线程先来复习一下进程和线程的概念
+
+进程是CPU资源分配的最小单位
+进程之间相互独立
+一个进程由一个或多个线程组成
+线程是CPU调度的最小单位
+多个线程相互协作完成进程的任务
+同一进程下的各个线程之间共享程序的内存空间（包括代码段、数据集、堆等）
+
+浏览器是多进程的浏览器之所以能够运行，是因为系统给它的进程分配了资源（CPU、内存）
+可以简单理解为每打开一个Tab页面，就相当于创建了一个独立的浏览器进程，但浏览器有优化机制，有些进程可能会被合并，比如打开多个空白标签页可能会被合并为一个进程，但我试过发现并没有。。
+
+多进程的优势
+避免单个页面或第三方插件crash影响整个浏览器
+多进程充分利用多核优势
+方便使用沙盒模型隔离插件等进程，提高浏览器稳定性
+
+当然，多线程会使内存等资源消耗更大，有空间换时间.."><meta name="generator" content="Hexo 5.4.0"></head><body class="is-flex is-flex-direction-column"><header class="header-widget is-flex-shrink-0 is-hidden-mobile"><div class="container is-fullhd is-flex is-justify-content-space-between is-align-items-center is-full-height"><section class="is-hidden-mobile is-flex-shrink-0"><h2><a href="/">Tate Yang's blog</a></h2></section><h3 class="is-hidden-mobile is-family-serif is-full-height is-flex is-align-items-center is-flex-shrink-0"><div class="is-full-height" id="postTopic"><p class="is-full-height is-flex-shrink-0 is-flex is-align-items-center is-justify-content-center">浏览器那些事：聊聊浏览器内核的多线程机制</p><p class="is-full-height is-flex-shrink-0 is-flex is-align-items-center is-justify-content-center">Click back to the top</p></div></h3><aside class="is-flex-shrink-0"><h3 class="is-inline-block"><a href="/">Home</a></h3><h3 class="is-inline-block"><a href="/about">About</a></h3><h3 class="is-inline-block"><a href="/archives">Archives</a></h3></aside></div></header><header class="is-flex header-widget is-flex-shrink-0 is-align-items-center is-justify-content-center is-hidden-tablet"><h3 class="is-inline-block"><a href="/">Home</a></h3><h3 class="is-inline-block"><a href="/about">About</a></h3><h3 class="is-inline-block"><a href="/archives">Archives</a></h3></header><main><main class="container is-max-widescreen content section post-page pt-4 px-4"><div class="columns is-flex-desktop is-justify-content-center is-flex-direction-row-reverse"><div class="column is-3 is-hidden-mobile"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B"><span class="toc-text">进程和线程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E6%98%AF%E5%A4%9A%E8%BF%9B%E7%A8%8B%E7%9A%84"><span class="toc-text">浏览器是多进程的</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%9A%E8%BF%9B%E7%A8%8B%E7%9A%84%E4%BC%98%E5%8A%BF"><span class="toc-text">多进程的优势</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E4%B8%BB%E8%A6%81%E5%8C%85%E5%90%AB%E5%93%AA%E4%BA%9B%E8%BF%9B%E7%A8%8B"><span class="toc-text">浏览器主要包含哪些进程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Browser%E8%BF%9B%E7%A8%8B"><span class="toc-text">Browser进程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E6%96%B9%E6%8F%92%E4%BB%B6%E8%BF%9B%E7%A8%8B"><span class="toc-text">第三方插件进程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GPU%E8%BF%9B%E7%A8%8B"><span class="toc-text">GPU进程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Renderer%E8%BF%9B%E7%A8%8B%EF%BC%88%E6%B5%8F%E8%A7%88%E5%99%A8%E5%86%85%E6%A0%B8%EF%BC%89"><span class="toc-text">Renderer进程（浏览器内核）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#GUI%E6%B8%B2%E6%9F%93%E7%BA%BF%E7%A8%8B"><span class="toc-text">GUI渲染线程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#JS%E5%BC%95%E6%93%8E%E7%BA%BF%E7%A8%8B"><span class="toc-text">JS引擎线程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BA%8B%E4%BB%B6%E8%A7%A6%E5%8F%91%E7%BA%BF%E7%A8%8B"><span class="toc-text">事件触发线程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9A%E6%97%B6%E8%A7%A6%E5%8F%91%E5%99%A8%E7%BA%BF%E7%A8%8B"><span class="toc-text">定时触发器线程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BC%82%E6%AD%A5HTTP%E8%AF%B7%E6%B1%82%E7%BA%BF%E7%A8%8B"><span class="toc-text">异步HTTP请求线程</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Browser%E8%BF%9B%E7%A8%8B%E5%92%8CRenderer%E8%BF%9B%E7%A8%8B%E7%9A%84%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B"><span class="toc-text">Browser进程和Renderer进程的通信过程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Renderer%E8%BF%9B%E7%A8%8B%E4%B8%AD%E7%BA%BF%E7%A8%8B%E4%B9%8B%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-text">Renderer进程中线程之间的关系</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#GUI%E6%B8%B2%E6%9F%93%E7%BA%BF%E7%A8%8B%E4%B8%8EJS%E5%BC%95%E6%93%8E%E7%BA%BF%E7%A8%8B%E4%BA%92%E6%96%A5"><span class="toc-text">GUI渲染线程与JS引擎线程互斥</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#JS%E9%98%BB%E5%A1%9E%E9%A1%B5%E9%9D%A2%E5%8A%A0%E8%BD%BD"><span class="toc-text">JS阻塞页面加载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E4%BD%9C%E8%80%85%E7%BA%BF%E7%A8%8B%EF%BC%8CJS%E7%9A%84%E5%A4%9A%E7%BA%BF%E7%A8%8B%EF%BC%9F"><span class="toc-text">工作者线程，JS的多线程？</span></a></li></ol></li></ol></div><div class="column is-9"><header class="my-4"><a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8"><i class="tag post-item-tag">浏览器</i></a></header><h1 class="mt-0 mb-1 is-family-serif" id="postTitle">浏览器那些事：聊聊浏览器内核的多线程机制</h1><time class="has-text-grey" datetime="2021-12-26T07:53:17.000Z">2021-12-26</time><article class="mt-2 post-content"><h2 id="进程和线程"><a href="#进程和线程" class="headerlink" title="进程和线程"></a>进程和线程</h2><p>先来复习一下进程和线程的概念</p>
+<ul>
+<li>进程是CPU资源分配的最小单位</li>
+<li>进程之间相互独立</li>
+<li>一个进程由一个或多个线程组成</li>
+<li>线程是CPU调度的最小单位</li>
+<li>多个线程相互协作完成进程的任务</li>
+<li>同一进程下的各个线程之间共享程序的内存空间（包括代码段、数据集、堆等）</li>
+</ul>
+<h2 id="浏览器是多进程的"><a href="#浏览器是多进程的" class="headerlink" title="浏览器是多进程的"></a>浏览器是多进程的</h2><p>浏览器之所以能够运行，是因为系统给它的进程分配了资源（CPU、内存）</p>
+<p>可以简单理解为每打开一个Tab页面，就相当于创建了一个独立的浏览器进程，但浏览器有优化机制，有些进程可能会被合并，比如打开多个空白标签页可能会被合并为一个进程，但我试过发现并没有。。</p>
+<p><img src="https://s2.loli.net/2021/12/26/HFC2jd8holLDAk6.png" alt="image.png"></p>
+<h3 id="多进程的优势"><a href="#多进程的优势" class="headerlink" title="多进程的优势"></a>多进程的优势</h3><ul>
+<li>避免单个页面或第三方插件crash影响整个浏览器</li>
+<li>多进程充分利用多核优势</li>
+<li>方便使用沙盒模型隔离插件等进程，提高浏览器稳定性</li>
+</ul>
+<p>当然，多线程会使内存等资源消耗更大，有空间换时间的思想</p>
+<h2 id="浏览器主要包含哪些进程"><a href="#浏览器主要包含哪些进程" class="headerlink" title="浏览器主要包含哪些进程"></a>浏览器主要包含哪些进程</h2><h3 id="Browser进程"><a href="#Browser进程" class="headerlink" title="Browser进程"></a>Browser进程</h3><p>浏览器的主进程（负责协调、主控）</p>
+<p>作用大概如下：</p>
+<ul>
+<li>负责浏览器的界面显示，与用户交互。如前进、后退等</li>
+<li>负责各个页面的管理，创建和销毁其他进程</li>
+<li>将Renderer进程得到的内存中的<a target="_blank" rel="noopener" href="https://baike.sogou.com/v248671.htm?fromTitle=Bitmap">Bitmap</a>绘制到用户界面上</li>
+<li>网络资源的下载、管理等</li>
+</ul>
+<h3 id="第三方插件进程"><a href="#第三方插件进程" class="headerlink" title="第三方插件进程"></a>第三方插件进程</h3><p>每种类型的插件对应一个进程，仅当使用该插件时才创建</p>
+<h3 id="GPU进程"><a href="#GPU进程" class="headerlink" title="GPU进程"></a>GPU进程</h3><p>最多一个，用于3D绘制等</p>
+<h3 id="Renderer进程（浏览器内核）"><a href="#Renderer进程（浏览器内核）" class="headerlink" title="Renderer进程（浏览器内核）"></a>Renderer进程（浏览器内核）</h3><p>对于普通的前端操作来说，最终要的就是渲染。这是重点</p>
+<p>该进程拥有多个线程，这些线程共同来完成页面的渲染任务。</p>
+<p>看看都有哪些线程</p>
+<h4 id="GUI渲染线程"><a href="#GUI渲染线程" class="headerlink" title="GUI渲染线程"></a>GUI渲染线程</h4><ul>
+<li>负责渲染浏览器界面，解析HTML，CSS，构建DOM树和RenderObject树，布局和绘制等</li>
+<li>当界面需要重绘或回流时，该线程就会执行</li>
+<li>该线程与JS引擎线程是互斥的，当JS引擎执行时GUI线程会被挂起（相当于被冻结了），GUI更新会被保存在一个队列中<strong>等到JS引擎空闲时</strong>立即被执行。</li>
+</ul>
+<h4 id="JS引擎线程"><a href="#JS引擎线程" class="headerlink" title="JS引擎线程"></a>JS引擎线程</h4><ul>
+<li>也称JS内核，负责处理JS脚本程序（如V8引擎）</li>
+<li>JS引擎一直等待着任务队列中任务的到来，然后加以处理，一个Tab页（renderer进程）中无论什么时候都只有一个JS线程在运行JS程序</li>
+</ul>
+<h4 id="事件触发线程"><a href="#事件触发线程" class="headerlink" title="事件触发线程"></a>事件触发线程</h4><ul>
+<li><code>JS脚本</code>的执行不会影响到<code>html元素</code>事件的触发，由于<code>JS单线程</code>关系，会将触发后需要执行的<code>JS脚本</code>添加到<code>JavaScript引擎</code>的处理队列中，当<code>JavaScript引擎</code>空闲时才会去执行。</li>
+<li>注意，该线程只是<strong>触发</strong>，触发后要执行的代码依然要放到JS引擎线程中去执行。</li>
+</ul>
+<h4 id="定时触发器线程"><a href="#定时触发器线程" class="headerlink" title="定时触发器线程"></a>定时触发器线程</h4><ul>
+<li><code>setTimeout</code>和<code>setInterval</code>所在的线程。</li>
+<li>由于<code>JavaScript引擎</code>是单线程的，如果处于阻塞线程状态势必会影响计时的准确性，所以浏览器中的定时器并不是由<code>JavaScript引擎</code>来计数的。</li>
+<li>该线程只是计时，一旦计时完毕后，会将触发的脚本添加到<code>JavaScript引擎</code>的处理队列中，等待<code>JavaScript引擎</code>空闲后再执行。</li>
+<li>注意，<code>W3C</code>在<code>HTML标准</code>中规定，规定要求<code>setTimeout</code>中低于<code>4ms</code>的时间间隔算为<code>4ms</code>。</li>
+</ul>
+<h4 id="异步HTTP请求线程"><a href="#异步HTTP请求线程" class="headerlink" title="异步HTTP请求线程"></a>异步HTTP请求线程</h4><ul>
+<li>在XMLHttpRequest在连接后是通过浏览器新开一个线程请求</li>
+<li>当状态发生变化时，如果之前有设置回调，会将这个回调再放入<code>JavaScript引擎</code>的处理队列中，再由JavaScript引擎执行。</li>
+</ul>
+<h2 id="Browser进程和Renderer进程的通信过程"><a href="#Browser进程和Renderer进程的通信过程" class="headerlink" title="Browser进程和Renderer进程的通信过程"></a>Browser进程和Renderer进程的通信过程</h2><ul>
+<li>Browser进程收到用户请求，首先需要获取页面内容（譬如通过网络下载资源），随后将该任务通过RendererHost接口传递给Render进程</li>
+<li>Renderer进程的Renderer接口收到消息，简单解释后，交给渲染线程，然后开始渲染<ul>
+<li>渲染线程接收请求，加载网页并渲染网页，这其中可能需要Browser进程获取资源和需要GPU进程来帮助渲染</li>
+<li>可能会有JS线程操作DOM（这样可能会造成回流并重绘）</li>
+<li>最后Render进程将结果传递给Browser进程</li>
+</ul>
+</li>
+<li>Browser进程接收到结果并将结果绘制出来</li>
+</ul>
+<h2 id="Renderer进程中线程之间的关系"><a href="#Renderer进程中线程之间的关系" class="headerlink" title="Renderer进程中线程之间的关系"></a>Renderer进程中线程之间的关系</h2><h3 id="GUI渲染线程与JS引擎线程互斥"><a href="#GUI渲染线程与JS引擎线程互斥" class="headerlink" title="GUI渲染线程与JS引擎线程互斥"></a>GUI渲染线程与JS引擎线程互斥</h3><p>由于JavaScript是可操纵DOM的，如果在修改这些元素属性同时渲染界面（即JS线程和UI线程同时运行），那么渲染线程前后获得的元素数据就可能不一致了。</p>
+<p>因此为了防止渲染出现不可预期的结果，浏览器设置GUI渲染线程与JS引擎为互斥的关系，当JS引擎执行时GUI线程会被挂起， GUI更新则会被保存在一个队列中等到JS引擎线程空闲时立即被执行。</p>
+<h3 id="JS阻塞页面加载"><a href="#JS阻塞页面加载" class="headerlink" title="JS阻塞页面加载"></a>JS阻塞页面加载</h3><p>从上述的互斥关系，可以推导出，JS如果执行时间过长就会阻塞页面。</p>
+<h3 id="工作者线程，JS的多线程？"><a href="#工作者线程，JS的多线程？" class="headerlink" title="工作者线程，JS的多线程？"></a>工作者线程，JS的多线程？</h3><blockquote>
+<p>Worker 接口是 <a target="_blank" rel="noopener" href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API">Web Workers API </a>的一部分，指的是一种可由脚本创建的后台任务，任务执行中可以向其创建者收发信息。要创建一个 Worker <strong>，</strong>只须调用 <code>Worker(URL) </code>构造函数，函数参数 <code>URL</code> 为指定的脚本。</p>
+<p>Worker 也可以创建新的 Worker，当然，所有 Worker 必须与其创建者<a target="_blank" rel="noopener" href="https://developer.mozilla.org/zh-CN/docs/Web/Security/Same-origin_policy">同源</a>（注意：<a target="_blank" rel="noopener" href="https://groups.google.com/a/chromium.org/forum/#!topic/blink-dev/5R3B4RN4GHU">Blink</a>暂时不支持嵌套 Worker）。 </p>
+<p>需要注意的是，不是所有函数和构造函数(或者说…类)都可以在 Worker 中使用。具体参考页面 <a target="_blank" rel="noopener" href="https://developer.mozilla.org/zh-CN/docs/Web/API/Web_Workers_API/Functions_and_classes_available_to_workers">Worker 所支持的函数和类</a>。Worker 可以使用 <a target="_blank" rel="noopener" href="https://developer.mozilla.org/en-US/DOM/XMLHttpRequest"><code>XMLHttpRequest</code></a> 发送请求，但是请求的 <code>responseXML</code> 与 <code>channel</code> 两个属性值始终返回 <code>null</code> （<code>fetch</code> 仍可正常使用，没有类似的限制）。 </p>
+</blockquote>
+<ul>
+<li>创建Worker时，JS引擎向浏览器申请开一个子线程（子线程是浏览器开的，完全受主线程控制，而且不能操作DOM）</li>
+<li>JS引擎线程与worker线程间通过特定的方式通信（<a target="_blank" rel="noopener" href="https://developer.mozilla.org/zh-CN/docs/Web/API/Worker/postMessage">postMessage</a> ，需要通过序列化对象来与线程交互特定的数据）</li>
+</ul>
+<p>如果有非常耗时的工作，单独开一个Worker线程，这样里面不管如何翻天覆地都不会影响JS引擎主线程， 只待计算出结果后，将结果通信给主线程即可</p>
+<p><strong>JS引擎是单线程的</strong>，这一点的本质仍然未改变，Worker可以理解是浏览器给JS引擎开的外挂，专门用来解决那些大量计算问题。</p>
+</article><section class="jump-container is-flex is-justify-content-space-between my-6"><!-- em is empty placeholder--><em></em><a class="button is-default" href="/2021/12/25/ES6%E6%96%B0%E7%89%B9%E6%80%A7%E4%BD%A0%E4%BA%86%E8%A7%A3%E5%A4%9A%E5%B0%91%EF%BC%9ASet%E3%80%81Map%E3%80%81WeakSet%E3%80%81WeakMap/" title="ES6新特性你了解多少：Set、Map、WeakSet、WeakMap"><span class="has-text-weight-semibold">Next: ES6新特性你了解多少：Set、Map、WeakSet、WeakMap</span><i class="iconfont icon-next ml-2 has-text-grey"></i></a></section><article class="mt-6 comment-container"><script async repo="xiaoyangjia1/Claudia-theme-blog" src="https://utteranc.es/client.js" issue-term="pathname" theme="preferred-color-scheme"></script></article></div></div></main></main><footer class="is-flex is-flex-direction-column is-align-items-center is-flex-shrink-0 is-family-serif"><section class="sns-container"><a title="twitter" target="_blank" rel="noopener nofollow" href="//twitter.com//"><i class="iconfont icon-twitter"></i></a><!-- Github--><a title="github" target="_blank" rel="noopener nofollow" href="//github.com/xiaoyangjia1"><i class="iconfont icon-github"></i></a><!-- Ins--><a title="instagram" target="_blank" rel="noopener nofollow" href="//www.instagram.com//"><i class="iconfont icon-ins"></i></a><!-- RSS--><!-- 知乎--><!-- 领英--><!-- 脸书--><a title="facebook" target="_blank" rel="noopener nofollow" href="//www.facebook.com//"><i class="iconfont icon-tian7_facebook"></i></a></section><p><span>Copyright ©</span><span> Tate Yang 2021</span></p><div class="is-flex is-justify-content-center is-flex-wrap-wrap"><p>Powered by Hexo &verbar;&nbsp;</p><p class="is-flex is-justify-content-center"><a title="Hexo theme author" target="_blank" rel="noopener" href="//github.com/haojen">Theme by Haojen&nbsp;</a></p><div style="margin-top: 2px"><a class="github-button" title="github-button" target="_blank" rel="noopener" href="https://github.com/haojen/hexo-theme-Claudia" data-color-scheme="no-preference: light; light: light; dark: dark;" data-show-count="true"></a></div></div><div><span></span></div></footer><script async defer src="https://buttons.github.io/buttons.js"></script><script src="/js/post.js"></script></body></html>

@@ -4,6 +4,25 @@
   
     
     <entry>
+      <title>浏览器那些事：聊聊浏览器内核的多线程机制</title>
+      <link href="/2021/12/26/%E6%B5%8F%E8%A7%88%E5%99%A8%E9%82%A3%E4%BA%9B%E4%BA%8B%EF%BC%9A%E8%81%8A%E8%81%8A%E6%B5%8F%E8%A7%88%E5%99%A8%E5%86%85%E6%A0%B8%E7%9A%84%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%9C%BA%E5%88%B6/"/>
+      <url>/2021/12/26/%E6%B5%8F%E8%A7%88%E5%99%A8%E9%82%A3%E4%BA%9B%E4%BA%8B%EF%BC%9A%E8%81%8A%E8%81%8A%E6%B5%8F%E8%A7%88%E5%99%A8%E5%86%85%E6%A0%B8%E7%9A%84%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%9C%BA%E5%88%B6/</url>
+      
+        <content type="html"><![CDATA[<h2 id="进程和线程"><a href="#进程和线程" class="headerlink" title="进程和线程"></a>进程和线程</h2><p>先来复习一下进程和线程的概念</p><ul><li>进程是CPU资源分配的最小单位</li><li>进程之间相互独立</li><li>一个进程由一个或多个线程组成</li><li>线程是CPU调度的最小单位</li><li>多个线程相互协作完成进程的任务</li><li>同一进程下的各个线程之间共享程序的内存空间（包括代码段、数据集、堆等）</li></ul><h2 id="浏览器是多进程的"><a href="#浏览器是多进程的" class="headerlink" title="浏览器是多进程的"></a>浏览器是多进程的</h2><p>浏览器之所以能够运行，是因为系统给它的进程分配了资源（CPU、内存）</p><p>可以简单理解为每打开一个Tab页面，就相当于创建了一个独立的浏览器进程，但浏览器有优化机制，有些进程可能会被合并，比如打开多个空白标签页可能会被合并为一个进程，但我试过发现并没有。。</p><p><img src="https://s2.loli.net/2021/12/26/HFC2jd8holLDAk6.png" alt="image.png"></p><h3 id="多进程的优势"><a href="#多进程的优势" class="headerlink" title="多进程的优势"></a>多进程的优势</h3><ul><li>避免单个页面或第三方插件crash影响整个浏览器</li><li>多进程充分利用多核优势</li><li>方便使用沙盒模型隔离插件等进程，提高浏览器稳定性</li></ul><p>当然，多线程会使内存等资源消耗更大，有空间换时间的思想</p><h2 id="浏览器主要包含哪些进程"><a href="#浏览器主要包含哪些进程" class="headerlink" title="浏览器主要包含哪些进程"></a>浏览器主要包含哪些进程</h2><h3 id="Browser进程"><a href="#Browser进程" class="headerlink" title="Browser进程"></a>Browser进程</h3><p>浏览器的主进程（负责协调、主控）</p><p>作用大概如下：</p><ul><li>负责浏览器的界面显示，与用户交互。如前进、后退等</li><li>负责各个页面的管理，创建和销毁其他进程</li><li>将Renderer进程得到的内存中的<a href="https://baike.sogou.com/v248671.htm?fromTitle=Bitmap">Bitmap</a>绘制到用户界面上</li><li>网络资源的下载、管理等</li></ul><h3 id="第三方插件进程"><a href="#第三方插件进程" class="headerlink" title="第三方插件进程"></a>第三方插件进程</h3><p>每种类型的插件对应一个进程，仅当使用该插件时才创建</p><h3 id="GPU进程"><a href="#GPU进程" class="headerlink" title="GPU进程"></a>GPU进程</h3><p>最多一个，用于3D绘制等</p><h3 id="Renderer进程（浏览器内核）"><a href="#Renderer进程（浏览器内核）" class="headerlink" title="Renderer进程（浏览器内核）"></a>Renderer进程（浏览器内核）</h3><p>对于普通的前端操作来说，最终要的就是渲染。这是重点</p><p>该进程拥有多个线程，这些线程共同来完成页面的渲染任务。</p><p>看看都有哪些线程</p><h4 id="GUI渲染线程"><a href="#GUI渲染线程" class="headerlink" title="GUI渲染线程"></a>GUI渲染线程</h4><ul><li>负责渲染浏览器界面，解析HTML，CSS，构建DOM树和RenderObject树，布局和绘制等</li><li>当界面需要重绘或回流时，该线程就会执行</li><li>该线程与JS引擎线程是互斥的，当JS引擎执行时GUI线程会被挂起（相当于被冻结了），GUI更新会被保存在一个队列中<strong>等到JS引擎空闲时</strong>立即被执行。</li></ul><h4 id="JS引擎线程"><a href="#JS引擎线程" class="headerlink" title="JS引擎线程"></a>JS引擎线程</h4><ul><li>也称JS内核，负责处理JS脚本程序（如V8引擎）</li><li>JS引擎一直等待着任务队列中任务的到来，然后加以处理，一个Tab页（renderer进程）中无论什么时候都只有一个JS线程在运行JS程序</li></ul><h4 id="事件触发线程"><a href="#事件触发线程" class="headerlink" title="事件触发线程"></a>事件触发线程</h4><ul><li><code>JS脚本</code>的执行不会影响到<code>html元素</code>事件的触发，由于<code>JS单线程</code>关系，会将触发后需要执行的<code>JS脚本</code>添加到<code>JavaScript引擎</code>的处理队列中，当<code>JavaScript引擎</code>空闲时才会去执行。</li><li>注意，该线程只是<strong>触发</strong>，触发后要执行的代码依然要放到JS引擎线程中去执行。</li></ul><h4 id="定时触发器线程"><a href="#定时触发器线程" class="headerlink" title="定时触发器线程"></a>定时触发器线程</h4><ul><li><code>setTimeout</code>和<code>setInterval</code>所在的线程。</li><li>由于<code>JavaScript引擎</code>是单线程的，如果处于阻塞线程状态势必会影响计时的准确性，所以浏览器中的定时器并不是由<code>JavaScript引擎</code>来计数的。</li><li>该线程只是计时，一旦计时完毕后，会将触发的脚本添加到<code>JavaScript引擎</code>的处理队列中，等待<code>JavaScript引擎</code>空闲后再执行。</li><li>注意，<code>W3C</code>在<code>HTML标准</code>中规定，规定要求<code>setTimeout</code>中低于<code>4ms</code>的时间间隔算为<code>4ms</code>。</li></ul><h4 id="异步HTTP请求线程"><a href="#异步HTTP请求线程" class="headerlink" title="异步HTTP请求线程"></a>异步HTTP请求线程</h4><ul><li>在XMLHttpRequest在连接后是通过浏览器新开一个线程请求</li><li>当状态发生变化时，如果之前有设置回调，会将这个回调再放入<code>JavaScript引擎</code>的处理队列中，再由JavaScript引擎执行。</li></ul><h2 id="Browser进程和Renderer进程的通信过程"><a href="#Browser进程和Renderer进程的通信过程" class="headerlink" title="Browser进程和Renderer进程的通信过程"></a>Browser进程和Renderer进程的通信过程</h2><ul><li>Browser进程收到用户请求，首先需要获取页面内容（譬如通过网络下载资源），随后将该任务通过RendererHost接口传递给Render进程</li><li>Renderer进程的Renderer接口收到消息，简单解释后，交给渲染线程，然后开始渲染<ul><li>渲染线程接收请求，加载网页并渲染网页，这其中可能需要Browser进程获取资源和需要GPU进程来帮助渲染</li><li>可能会有JS线程操作DOM（这样可能会造成回流并重绘）</li><li>最后Render进程将结果传递给Browser进程</li></ul></li><li>Browser进程接收到结果并将结果绘制出来</li></ul><h2 id="Renderer进程中线程之间的关系"><a href="#Renderer进程中线程之间的关系" class="headerlink" title="Renderer进程中线程之间的关系"></a>Renderer进程中线程之间的关系</h2><h3 id="GUI渲染线程与JS引擎线程互斥"><a href="#GUI渲染线程与JS引擎线程互斥" class="headerlink" title="GUI渲染线程与JS引擎线程互斥"></a>GUI渲染线程与JS引擎线程互斥</h3><p>由于JavaScript是可操纵DOM的，如果在修改这些元素属性同时渲染界面（即JS线程和UI线程同时运行），那么渲染线程前后获得的元素数据就可能不一致了。</p><p>因此为了防止渲染出现不可预期的结果，浏览器设置GUI渲染线程与JS引擎为互斥的关系，当JS引擎执行时GUI线程会被挂起， GUI更新则会被保存在一个队列中等到JS引擎线程空闲时立即被执行。</p><h3 id="JS阻塞页面加载"><a href="#JS阻塞页面加载" class="headerlink" title="JS阻塞页面加载"></a>JS阻塞页面加载</h3><p>从上述的互斥关系，可以推导出，JS如果执行时间过长就会阻塞页面。</p><h3 id="工作者线程，JS的多线程？"><a href="#工作者线程，JS的多线程？" class="headerlink" title="工作者线程，JS的多线程？"></a>工作者线程，JS的多线程？</h3><blockquote><p>Worker 接口是 <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API">Web Workers API </a>的一部分，指的是一种可由脚本创建的后台任务，任务执行中可以向其创建者收发信息。要创建一个 Worker <strong>，</strong>只须调用 <code>Worker(URL) </code>构造函数，函数参数 <code>URL</code> 为指定的脚本。</p><p>Worker 也可以创建新的 Worker，当然，所有 Worker 必须与其创建者<a href="https://developer.mozilla.org/zh-CN/docs/Web/Security/Same-origin_policy">同源</a>（注意：<a href="https://groups.google.com/a/chromium.org/forum/#!topic/blink-dev/5R3B4RN4GHU">Blink</a>暂时不支持嵌套 Worker）。 </p><p>需要注意的是，不是所有函数和构造函数(或者说…类)都可以在 Worker 中使用。具体参考页面 <a href="https://developer.mozilla.org/zh-CN/docs/Web/API/Web_Workers_API/Functions_and_classes_available_to_workers">Worker 所支持的函数和类</a>。Worker 可以使用 <a href="https://developer.mozilla.org/en-US/DOM/XMLHttpRequest"><code>XMLHttpRequest</code></a> 发送请求，但是请求的 <code>responseXML</code> 与 <code>channel</code> 两个属性值始终返回 <code>null</code> （<code>fetch</code> 仍可正常使用，没有类似的限制）。 </p></blockquote><ul><li>创建Worker时，JS引擎向浏览器申请开一个子线程（子线程是浏览器开的，完全受主线程控制，而且不能操作DOM）</li><li>JS引擎线程与worker线程间通过特定的方式通信（<a href="https://developer.mozilla.org/zh-CN/docs/Web/API/Worker/postMessage">postMessage</a> ，需要通过序列化对象来与线程交互特定的数据）</li></ul><p>如果有非常耗时的工作，单独开一个Worker线程，这样里面不管如何翻天覆地都不会影响JS引擎主线程， 只待计算出结果后，将结果通信给主线程即可</p><p><strong>JS引擎是单线程的</strong>，这一点的本质仍然未改变，Worker可以理解是浏览器给JS引擎开的外挂，专门用来解决那些大量计算问题。</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> 浏览器 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>ES6新特性你了解多少：Set、Map、WeakSet、WeakMap</title>
       <link href="/2021/12/25/ES6%E6%96%B0%E7%89%B9%E6%80%A7%E4%BD%A0%E4%BA%86%E8%A7%A3%E5%A4%9A%E5%B0%91%EF%BC%9ASet%E3%80%81Map%E3%80%81WeakSet%E3%80%81WeakMap/"/>
       <url>/2021/12/25/ES6%E6%96%B0%E7%89%B9%E6%80%A7%E4%BD%A0%E4%BA%86%E8%A7%A3%E5%A4%9A%E5%B0%91%EF%BC%9ASet%E3%80%81Map%E3%80%81WeakSet%E3%80%81WeakMap/</url>
@@ -34,48 +53,6 @@
         <tags>
             
             <tag> es6 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>（持续更新）：HTML篇</title>
-      <link href="/2021/12/24/%E6%98%A5%E6%8B%9B%E7%AC%94%E7%BB%8F%E9%9D%A2%E7%BB%8F%EF%BC%88%E6%8C%81%E7%BB%AD%E6%9B%B4%E6%96%B0%EF%BC%89%EF%BC%9AHTML%E7%AF%87/"/>
-      <url>/2021/12/24/%E6%98%A5%E6%8B%9B%E7%AC%94%E7%BB%8F%E9%9D%A2%E7%BB%8F%EF%BC%88%E6%8C%81%E7%BB%AD%E6%9B%B4%E6%96%B0%EF%BC%89%EF%BC%9AHTML%E7%AF%87/</url>
-      
-        <content type="html"><![CDATA[<p><img src="https://pic.baike.soso.com/ugc/baikepic2/38804/20170630192335-133191739.jpg/800"></p><h2 id="HTML脚本标签的defer和async属性"><a href="#HTML脚本标签的defer和async属性" class="headerlink" title="HTML脚本标签的defer和async属性"></a>HTML脚本标签的defer和async属性</h2><ul><li><p>async</p><p>对于经典脚本，如果该<code>async</code>属性存在，则经典脚本将与解析并行获取，并在可用时立即进行评估。</p><p>对于<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules">模块脚本</a>，如果该<code>async</code>属性存在，则脚本及其所有依赖项将在延迟队列中执行，因此它们将在解析时并行获取并在可用时立即进行评估。</p><p>允许消除<strong>阻止解析器的 JavaScript</strong>，浏览器在继续解析之前必须加载和评估脚本。<code>defer</code>在这种情况下也有类似的效果。</p><p>会阻塞页面渲染</p></li><li><p>defer</p><p>脚本在文档被解析后执行，在触发前执行<a href="https://developer.mozilla.org/zh-CN/docs/Web/API/Window/DOMContentLoaded_event">DomContentLoaded</a></p><p>脚本将阻止<code>DOMContentLoaded</code>事件触发，直到脚本加载并完成评估。</p><p>如果该<code>src</code>属性不存在（即用于内联脚本），则不得使用该属性，在这种情况下它将不起作用。</p><p>该<code>defer</code>属性对<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules">模块脚本</a>没有影响——默认情况下它们会延迟。</p><p>脚本将按照它们在文档中出现的顺序执行。</p><p>允许消除<strong>阻止解析器的 JavaScript</strong>，浏览器在继续解析之前必须加载和评估脚本</p><p>不会阻塞页面渲染</p></li></ul>]]></content>
-      
-      
-      
-        <tags>
-            
-            <tag> HTML </tag>
-            
-            <tag> 笔经面经 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>（持续更新）：CSS篇</title>
-      <link href="/2021/12/24/%E6%98%A5%E6%8B%9B%E7%AC%94%E7%BB%8F%E9%9D%A2%E7%BB%8F%EF%BC%88%E6%8C%81%E7%BB%AD%E6%9B%B4%E6%96%B0%EF%BC%89%EF%BC%9ACSS%E7%AF%87/"/>
-      <url>/2021/12/24/%E6%98%A5%E6%8B%9B%E7%AC%94%E7%BB%8F%E9%9D%A2%E7%BB%8F%EF%BC%88%E6%8C%81%E7%BB%AD%E6%9B%B4%E6%96%B0%EF%BC%89%EF%BC%9ACSS%E7%AF%87/</url>
-      
-        <content type="html"><![CDATA[<p><img src="https://pic.baike.soso.com/ugc/baikepic2/7001/20170630192335-2011028509.jpg/800"></p><h2 id="CSS外边距"><a href="#CSS外边距" class="headerlink" title="CSS外边距"></a>CSS外边距</h2><h4 id="magin参数"><a href="#magin参数" class="headerlink" title="magin参数"></a>magin参数</h4><h4 id="框模型"><a href="#框模型" class="headerlink" title="框模型"></a>框模型</h4><h4 id="BFC"><a href="#BFC" class="headerlink" title="BFC"></a>BFC</h4><ul><li>触发BFC，其中相邻的两个盒子外边距取最大的那个值</li></ul><h2 id="重排和重绘"><a href="#重排和重绘" class="headerlink" title="重排和重绘"></a>重排和重绘</h2><h4 id="display"><a href="#display" class="headerlink" title="display"></a>display</h4><h4 id="visibility"><a href="#visibility" class="headerlink" title="visibility"></a>visibility</h4>]]></content>
-      
-      
-      
-        <tags>
-            
-            <tag> 笔经面经 </tag>
-            
-            <tag> css </tag>
             
         </tags>
       
