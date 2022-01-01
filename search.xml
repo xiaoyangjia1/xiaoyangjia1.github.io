@@ -4,6 +4,25 @@
   
     
     <entry>
+      <title>好一个JSON</title>
+      <link href="/2022/01/01/%E5%A5%BD%E4%B8%80%E4%B8%AAJSON/"/>
+      <url>/2022/01/01/%E5%A5%BD%E4%B8%80%E4%B8%AAJSON/</url>
+      
+        <content type="html"><![CDATA[<p><img src="https://s2.loli.net/2022/01/01/HIWDX4pPfs9MoAz.jpg" alt="微信图片_20220101112850.jpg"></p><p>问你一个问题，知道<a href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/JSON">JSON</a>的全称吗？</p><p>报告，我知道：<a href="https://www.json.org/json-en.html">JavaScript Obiect Notation</a>，JS对象简谱</p><p>我们在平时开发过程中，前后传输的数据格式一般就是JSON，它不属于JS，它们只是拥有相同的语法而已。</p><p>JSON是一种通用数据格式，很多语言都有解析和序列化JSON的内置能力。</p><p><strong>JSON</strong> 是一种语法，用来序列化对象、数组、数值、字符串、布尔值和 <a href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/null"><code>null</code></a> 。但它没有变量、函数或对象实例的概念。</p><p>JSON的出现是为了代替冗余的XML，因为JSON可以直接传给<a href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/eval">eval()</a>而不需要创建DOM。</p><h2 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h2><ul><li>简单值：字符串（必须使用双引号）、数值、布尔值和null，但undefined不可以</li><li>对象：属性名需要用双引号包围，不像JS对象字面量一样，它没有变量声明，最后也没有分号</li><li>数组</li></ul><h2 id="解析和序列化"><a href="#解析和序列化" class="headerlink" title="解析和序列化"></a>解析和序列化</h2><p>JSON可以直接被解析成可用的JS对象，与解析为DOM文档的XML相比，这个优势很明显。</p><h2 id="JSON对象"><a href="#JSON对象" class="headerlink" title="JSON对象"></a>JSON对象</h2><p>早期的JSON解析器基本上相当于JS的eval()函数。因为JSON是JS语法的子集，所以eval()可以解析、解释，并将其作为JS对象和数组返回。</p><p>ECMAScript5增加了JSON全局对象，正式引入解析JSON的能力</p><p><a href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify">stringfy()</a>方法将JS序列化为JSON字符串</p><pre class="language-js" data-language="js"><code class="language-js"><span class="token constant">JSON</span><span class="token punctuation">.</span><span class="token function">stringify</span><span class="token punctuation">(</span>value<span class="token punctuation">[</span><span class="token punctuation">,</span> replacer <span class="token punctuation">[</span><span class="token punctuation">,</span> space<span class="token punctuation">]</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token comment">// 在序列化对象时，所有函数和原型成员都会有意在结果中省略。值为undefined的任何属性也会被跳过。</span></code></pre><ul><li><p><code>value</code></p><p>将要序列化成 一个 JSON 字符串的值。</p></li><li><p><code>replacer</code> 可选</p><p>如果该参数是一个函数，则在序列化过程中，被序列化的值的每个属性都会经过该函数的转换和处理；如果该参数是一个数组，则只有包含在这个数组中的属性名才会被序列化到最终的 JSON 字符串中；如果该参数为 null 或者未提供，则对象所有的属性都会被序列化。</p></li><li><p><code>space</code> 可选</p><p>指定缩进用的空白字符串，用于美化输出（pretty-print）；如果参数是个数字，它代表有多少的空格；上限为10。该值若小于1，则意味着没有空格；如果该参数为字符串（当字符串长度超过10个字母，取其前10个字母），该字符串将被作为空格；如果该参数没有提供（或者为 null），将没有空格。</p></li></ul><p>parse()将JSON解析为原生JS</p><pre class="language-js" data-language="js"><code class="language-js"><span class="token constant">JSON</span><span class="token punctuation">.</span><span class="token function">parse</span><span class="token punctuation">(</span>text<span class="token punctuation">[</span><span class="token punctuation">,</span> reviver<span class="token punctuation">]</span><span class="token punctuation">)</span></code></pre><ul><li>text</li></ul><p>要被解析成 JavaScript 值的字符串</p><ul><li><code>reviver</code> 可选</li></ul><p>转换器, 如果传入该参数(函数)，可以用来修改解析生成的原始值，调用时机在 parse 函数返回之前。</p><p>将一个对象赋值给obj变量，再将obj序列化又解析后生成的对象与obj是两个完全</p><h2 id="toJSON-方法"><a href="#toJSON-方法" class="headerlink" title="toJSON()方法"></a>toJSON()方法</h2><p>有时候，对象需要在JSON.stringify()之上自定义JSON序列化，可以在要序列化的对象中添加toJSON方法</p><p>箭头函数不能定义toJSON()方法，因为箭头函数的词法作用域是全局作用域。</p><p>如果有stringify()方法有过滤函数，则传入过滤函数的值就是toJSON()方法的返回值</p>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> JSON </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>Hello啊 Worker</title>
       <link href="/2021/12/27/Hello%E5%95%8A-Worker/"/>
       <url>/2021/12/27/Hello%E5%95%8A-Worker/</url>
